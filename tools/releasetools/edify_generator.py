@@ -238,6 +238,11 @@ class EdifyGenerator(object):
       self.script.append("# " + i)
     self.script.append("")
 
+  def Comment(self, comment, nonl):
+    """Write a comment into the update script without a new line."""
+    for i in comment.split("\n"):
+      self.script.append("# " + i)
+
   def Print(self, message):
     """Log a message to the screen (if the logs are visible)."""
     self.script.append('ui_print("%s");' % (message,))

@@ -677,25 +677,35 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
     # Stage 3/3: Make changes.
     script.Comment("Stage 3/3")
 
-  # Dump fingerprints
-  #script.Print("Target: %s" % CalculateFingerprint(
-  #    oem_props, oem_dict, OPTIONS.info_dict))
+  # Print PureNexus flare
+  script.AppendExtra("")
+  script.Print(" ")
   script.Print("********************")
   script.Print("**   Pure Nexus   **")
   script.Print("********************")
+  script.Print(" ")
+  script.AppendExtra("")
 
+  script.Comment("Unmount system safely via recovery tools", 1)
   script.AppendExtra("ifelse(is_mounted(\"/system\"), unmount(\"/system\"));")
+  script.AppendExtra("")
+
   device_specific.FullOTA_InstallBegin()
 
   CopyInstallTools(output_zip)
+  script.Comment("Extract specific installation tools", 1)
   script.UnpackPackageDir("install", "/tmp/install")
   script.SetPermissionsRecursive("/tmp/install", 0, 0, 0755, 0644, None, None)
   script.SetPermissionsRecursive("/tmp/install/bin", 0, 0, 0755, 0755, None, None)
+  script.AppendExtra("")
 
   if OPTIONS.backuptool:
+    script.Comment("Backup appended system files", 1)
+    script.Print("- Backuping system files...")
     script.Mount("/system")
     script.RunBackup("backup")
     script.Unmount("/system")
+    script.AppendExtra("")
 
   system_progress = 0.75
 
@@ -710,9 +720,10 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
     WritePolicyConfig(OPTIONS.info_dict["selinux_fc"], output_zip)
 
   recovery_mount_options = OPTIONS.info_dict.get("recovery_mount_options")
-
   system_items = ItemSet("system", "META/filesystem_config.txt")
+
   script.ShowProgress(system_progress, 0)
+  script.AppendExtra("")
 
   if block_based:
     # Full OTA is done as an "incremental" against an empty source
@@ -722,16 +733,22 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
     system_tgt = GetImage("system", OPTIONS.input_tmp, OPTIONS.info_dict)
     system_tgt.ResetFileMap()
     system_diff = common.BlockDifference("system", system_tgt, src=None)
+    script.Comment("Flash the system as a single block", 1)
     system_diff.WriteScript(script, output_zip)
+    script.AppendExtra("")
   else:
+    script.Comment("Flash the system as an extracted package", 1)
     script.FormatPartition("/system")
     script.Mount("/system", recovery_mount_options)
     if not has_recovery_patch:
       script.UnpackPackageDir("recovery", "/system")
     script.UnpackPackageDir("system", "/system")
+    script.AppendExtra("")
 
     symlinks = CopyPartitionFiles(system_items, input_zip, output_zip)
+    script.Comment("Symlink required files", 1)
     script.MakeSymlinks(symlinks)
+    script.AppendExtra("")
 
   boot_img = common.GetBootableImage(
       "boot.img", "boot.img", OPTIONS.input_tmp, "BOOT")
@@ -772,18 +789,24 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
 
   if OPTIONS.backuptool:
     script.ShowProgress(0.02, 10)
+    script.AppendExtra("")
+    script.Comment("Restore the backuped system data", 1)
+    script.Print("- Restoring system files...")
     if block_based:
       script.Mount("/system")
     script.RunBackup("restore")
     if block_based:
       script.Unmount("/system")
+    script.AppendExtra("")
 
-  script.Print(" ")
-  script.Print("Flashing Kernel..")
+  script.Comment("Flash the kernel as a single block", 1)
+  script.Print("- Flashing kernel...")
   script.ShowProgress(0.05, 5)
   script.WriteRawImage("/boot", "boot.img")
-
+  script.AppendExtra("")
+  script.Print(" ")
   script.ShowProgress(0.2, 10)
+
   device_specific.FullOTA_InstallEnd()
 
   if OPTIONS.extra_script is not None:
